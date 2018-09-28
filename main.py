@@ -32,6 +32,9 @@ while True:
     except requests.exceptions.ReadTimeout:
         print("Ловим разрыв соединения, ждем чуда")
         time.sleep(5)
+    except requests.exceptions.HTTPError:
+        print("Ловим разрыв соединения, ждем чуда")
+        time.sleep(5)
 
     #except Exception as exp:
      #   vk.send_message("25624369", "Ошибка: %s" % str(exp))

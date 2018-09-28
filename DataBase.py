@@ -15,7 +15,7 @@ DB_DOMA_SLOTS = ("id", "name", "owner_hostid", "add_time", "adress", "square", "
 #
 DB_EVENTS_SLOTS = ("N", "time", "host", "id", "message", "dom")
 # Создание таблиц
-_db_users_Create = """CREATE TABLE users (hostid varchar(20) not NULL, host varchar(2), id varchar(10), type varchar(10), menu varchar(20), extra text, add_time datetime, doma text, kvartiri text, notifications BOOLEAN NOT NULL DEFAULT TRUE, primary key (hostid)); CREATE INDEX hostid ON users(hostid)"""
+_db_users_Create = """CREATE TABLE users (hostid varchar(20) not NULL, host varchar(2), id varchar(10), type varchar(10), menu varchar(20), extra text, add_time datetime, doma text, kvartiri text, notifications text, primary key (hostid)); CREATE INDEX hostid ON users(hostid)"""
 _db_doma_Create = """CREATE TABLE doma (id INT UNSIGNED NOT NULL AUTO_INCREMENT, name varchar(30), owner_hostid varchar(20), add_time datetime, adress text, square varchar(10), rooms varchar(10), sanuzel varchar(10), extras text, text text, photos text, kvartirant text, PRIMARY KEY(id)); CREATE INDEX id ON doma(id)"""
 _db_events_Create = """CREATE TABLE events (N INT UNSIGNED NOT NULL AUTO_INCREMENT, time date, host VARCHAR(2), id VARCHAR(10), message varchar(15), dom varchar(10), primary key(N)); CREATE INDEX time ON events(time);"""
 
@@ -71,13 +71,22 @@ class User:
         self.extra = None
 
         # общие значения рабочие
-        self.notifications = True
+        self.notifications = {
+            "arendator": True,
+            "client": True
+        }
 
         # Для Аренд
         self.doma = None
 
         # Для клиента
         self.kvartiri = None
+
+    # Перезагрузка под клиент/арендодатель
+    def reload(self):
+        self.db_update() # Сохраняемся
+        DB_users.store[self.host][self.id] = self.db_load(self.id, self.host) # перезагружаем
+        print("Юзер %s перезагружен как %s!"% (self.hostid, self.type))
 
     # Типа статического инициализатора, котоырй мы полюбим
     @staticmethod
@@ -1045,22 +1054,25 @@ class Kvartirant:
         if dom:
             vars["dom"] = "'%s'" % dom
 
-        tm = self.last_oplata     # Дата
-        period = float(self.oplata["period"]) # период
+        # Если нет периода
+        if not self.oplata["period"]:
+            return
+        period = float(self.oplata["period"])  # период
+        tm = self.last_oplata + datetime.timedelta(weeks=4*period)     # Дата оплаты
         # Анализируем сколько дней до оплаты и исходя из этого делаем новый ивент
-        delta = ((tm + datetime.timedelta(weeks=4*period)) - datetime.datetime.now()).days
+        delta = (tm - datetime.datetime.now()).days
         if delta > 10 and period > 1:
-            number = 10
+            number = -10
         elif delta > 5:
-            number = 5
+            number = -5
         elif delta >= 1:
-            number = 1
+            number = -1
         # Если просрочили
         elif number == None:
             number = 0
         # И каждые 5 дней от сегодня
         else:
-            number = (datetime.datetime.now() - tm).days + 5
+            number = abs(delta) + 5
 
         dt = tm
         if number:

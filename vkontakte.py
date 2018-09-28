@@ -12,6 +12,9 @@ from smiles import smiles
 users = db.DB_users_vk
 doma = db.DB_doma
 
+# Ругулярка для емейла
+regx_email=r"[\w\d\._-!#$%&'\*\+-/=\?^_`{}|~]+@?[\w\d\_\-]+\.+[\w\d\_\-]+"
+########################################################################################################################
 # Класс обработчика вк
 class BotVk:
     # Получаем доступ по токену
@@ -120,6 +123,7 @@ class BotVk:
             # Настройка уведомлений
             elif smiles.notification in txt:
                 user.menu = "edit_notifications"
+                user.extra = None
                 self.send_message(id, arendator_edit_notifications(msg))
                 return
                 # Настройки квартиранта
@@ -211,6 +215,19 @@ class BotVk:
             self.send_message(id, arendator_edit_notifications(msg))
             return
 
+        #ИВЕНТЫ!!
+        # Ивент об оплате
+        elif user.menu == "event_oplata":
+            print("Ивент оплаты пользователем ", id)
+            self.send_message(id, arendator_event_oplata(msg))
+            return
+
+        # Ивент окончания договора
+        elif user.menu == "event_end_date":
+            print("Ивент окончания даты пользователем ", id)
+            self.send_message(id, arendator_event_end_date(msg))
+            return
+
         # Если ничего не подошло
         self.send_message(id, arendator_menu(msg))
         return
@@ -243,7 +260,7 @@ class BotVk:
             elif smiles.copy in txt:
                 user.menu = "copy_kvartira"
                 user.extra = None
-                self.send_message(id, client_menu(msg, "В разработке"))
+                self.send_message(id, client_copy_kvartira(msg))
                 return
 
             elif smiles.change in txt:
@@ -307,6 +324,19 @@ class BotVk:
         elif user.menu == "arendator_edit_money":
             print("Изменение оплаты пользователем ", id)
             self.send_message(id, client_edit_money(msg))
+            return
+
+        # ИВЕНТЫ!!
+        # Ивент об оплате
+        elif user.menu == "event_oplata":
+            print("Ивент оплаты пользователем ", id)
+            self.send_message(id, client_event_oplata(msg))
+            return
+
+            # Ивент окончания договора
+        elif user.menu == "event_end_date":
+            print("Ивент окончания даты пользователем ", id)
+            self.send_message(id, client_event_end_date(msg))
             return
 
         #TODO
@@ -968,10 +998,116 @@ def arendator_delete_flat_confirm(msg):
 def arendator_edit_notifications(msg):
     id = str(msg["uid"])
     user = users[id]
+    txt = msg["body"]
 
-    #TODO
+    # Текущее значение
+    nots = user.notifications[user.type]
+
+    if smiles.done in txt:
+        user.notifications[user.type] = True
+        user.menu = "menu"
+        user.db_update()
+        return arendator_menu(msg, "Уведомления для арендодателя ВКЛЮЧЕНЫ")
+
+    elif smiles.delete in txt:
+        user.notifications[user.type] = False
+        user.menu = "menu"
+        user.db_update()
+        return arendator_menu(msg, "Уведомления для арендодателя ВЫКЛЮЧЕНЫ")
+
+    # Иначе выводим запрос
+    txt = "Сейчас уведомления для арендодателя: *%s*" % ("ВКЛЮЧЕНЫ" if nots else "ВЫКЛЮЧЕНЫ")
+
+    keyb = json.dumps({
+        "one_time": False, "buttons": [
+            [{
+                "action": {
+                    "type": "text",
+                    "label": smiles.delete + " Выключить"
+                },
+                "color": "negative"
+            },
+                {
+                    "action": {
+                        "type": "text",
+                        "label": smiles.done + " Включить"
+                    },
+                    "color": "positive"
+            }],
+            [{
+                "action": {
+                    "type": "text",
+                    "label": smiles.back + " Отменить"
+                },
+                "color": "default"
+            }
+            ]]}, ensure_ascii=False)
+
+    return {"message": txt, "keyboard": keyb}
+
+# Продление договора
+def arendator_dogovor(msg):
+    id = str(msg["uid"])
+    user = users[id]
+
+    # TODO
     user.menu = "menu"
-    return (arendator_menu(msg, "Раздел в разработке"))
+    return arendator_menu(msg, "Функция в разработке")
+
+# ИВЕНТЫ!
+# Когда нам пишло сообщение об оплате
+def arendator_event_oplata(msg):
+    id = str(msg["uid"])
+    user = users[id]
+    #dom = doma[user.doma[user.extra["name"]]]  # Дом
+    txt = msg["body"]
+
+    # Подтверждение оплаты
+    if smiles.checked in txt:
+        user.confirm_oplata()
+        user.menu = "menu"
+        return arendator_menu(msg, "Оплата подтверждена")
+    # Отключение уведомлений
+    elif smiles.delete in txt:
+        user.notifications["arendator"] = False
+        user.menu = "menu"
+        user.extra = None
+        user.db_update()
+        return arendator_menu(msg, "Уведомления для арендатора ОТКЛЮЧЕНЫ")
+
+    # Сделаем простой выход
+    else:
+        user.menu = "menu"
+        user.extra = None
+        return arendator_menu(msg)
+
+# Когда нам пришло сообщение об окончании договора
+def arendator_event_end_date(msg):
+    id = str(msg["uid"])
+    user = users[id]
+    #dom = doma[user.doma[user.extra["name"]]]  # Дом
+    txt = msg["body"]
+
+    # Подтверждение оплаты
+    if smiles.dogovor in txt:
+        user.menu = "arendator_dogovor"
+        return arendator_dogovor(msg)
+
+    # Отключение уведомлений
+    elif smiles.delete in txt:
+        user.notifications["arendator"] = False
+        user.menu = "menu"
+        user.extra = None
+        user.db_update()
+        return arendator_menu(msg, "Уведомления для арендатора ОТКЛЮЧЕНЫ")
+
+    # Сделаем простой выход
+    else:
+        user.menu = "menu"
+        user.extra = None
+        return arendator_menu(msg)
+
+
 
 
 ######################################################################################
@@ -1726,10 +1862,52 @@ def client_copy_kvartira(msg):
 def client_edit_notifications(msg):
     id = str(msg["uid"])
     user = users[id]
+    txt = msg["body"]
 
-    #TODO
-    user.menu = "menu"
-    return (client_menu(msg, "Раздел в разработке"))
+    # Текущее значение
+    nots = user.notifications[user.type]
+
+    if smiles.done in txt:
+        user.notifications[user.type] = True
+        user.menu = "menu"
+        user.db_update()
+        return client_menu(msg, "Уведомления для съемщика ВКЛЮЧЕНЫ")
+
+    elif smiles.delete in txt:
+        user.notifications[user.type] = False
+        user.menu = "menu"
+        user.db_update()
+        return client_menu(msg, "Уведомления для съемщика ВЫКЛЮЧЕНЫ")
+
+    # Иначе выводим запрос
+    txt = "Сейчас уведомления для съемщика: *%s*" % ("ВКЛЮЧЕНЫ" if nots else "ВЫКЛЮЧЕНЫ")
+
+    keyb = json.dumps({
+        "one_time": False, "buttons": [
+            [{
+                "action": {
+                    "type": "text",
+                    "label": smiles.delete + " Выключить"
+                },
+                "color": "negative"
+            },
+                {
+                    "action": {
+                        "type": "text",
+                        "label": smiles.done + " Включить"
+                    },
+                    "color": "positive"
+                }],
+            [{
+                "action": {
+                    "type": "text",
+                    "label": smiles.back + " Отменить"
+                },
+                "color": "default"
+            }
+            ]]}, ensure_ascii=False)
+
+    return {"message": txt, "keyboard": keyb}
 
 # Настройка оплаты
 def client_edit_money(msg):
@@ -1740,4 +1918,65 @@ def client_edit_money(msg):
     user.menu = "menu"
     return (client_menu(msg, "Раздел в разработке"))
 
+# Продление договора
+def client_dogovor(msg):
+    id = str(msg["uid"])
+    user = users[id]
+
+    # TODO
+    user.menu = "menu"
+    return client_menu(msg, "Функция в разработке")
+
+
+# ИВЕНТЫ!
+# Когда нам пишло сообщение об оплате
+def client_event_oplata(msg):
+    id = str(msg["uid"])
+    user = users[id]
+    txt = msg["body"]
+
+    # Подтверждение оплаты
+    if smiles.checked in txt:
+        user.confirm_oplata()
+        user.menu = "menu"
+        user.extra = None
+        return client_menu(msg, "Оплата подтверждена")
+    # Отключение уведомлений
+    elif smiles.delete in txt:
+        user.notifications["client"] = False
+        user.menu = "menu"
+        user.extra = None
+        user.db_update()
+        return client_menu(msg, "Уведомления для съемщика ОТКЛЮЧЕНЫ")
+
+    # Сделаем простой выход
+    else:
+        user.menu = "menu"
+        user.extra = None
+        return client_menu(msg)
+
+# Когда нам пришло сообщение об окончании договора
+def client_event_end_date(msg):
+    id = str(msg["uid"])
+    user = users[id]
+    txt = msg["body"]
+
+    # Подтверждение оплаты
+    if smiles.dogovor in txt:
+        user.menu = "arendator_dogovor"
+        return client_dogovor(msg)
+
+    # Отключение уведомлений
+    elif smiles.delete in txt:
+        user.notifications["client"] = False
+        user.db_update()
+        user.menu = "menu"
+        user.extra = None
+        return client_menu(msg, "Уведомления для съемщика ОТКЛЮЧЕНЫ")
+
+    # Сделаем простой выход
+    else:
+        user.menu = "menu"
+        user.extra = None
+        return client_menu(msg)
 

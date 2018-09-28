@@ -1,4 +1,4 @@
-import time, datetime
+import time, datetime, json
 
 from vkontakte import botvk
 import DataBase as db
@@ -14,10 +14,8 @@ api = {
 }
 
 # Время как част опроверяем
-CHECK_TIME = 60*60*3 #3 часа    # Время через которое проверяется событие
-# Количество дней когда мы просим заплатить
-TIMERS_OPLATA = (-10, -5, -1, 0, 5)
-TIMERS_END_DATE = (-15, -5, -1, 0, 5)
+#CHECK_TIME = 60*60*3 #3 часа    # Время через которое проверяется событие
+CHECK_TIME = 60
 
 ########################################################################################################################
 #       Чекер событий
@@ -45,6 +43,7 @@ class EventSender:
     def check(self):
         # Если пора смотреть
         if time.time() > self.last_check + CHECK_TIME:
+            print("Смотрим события")
             co, cu = db.connect()
             txt = "SELECT * FROM %s ORDER BY time LIMIT 10" % db.EVENTS_TABLE
             cu.execute(txt)
@@ -88,7 +87,9 @@ class EventSender:
 
         else:
             print("Событие не валидно", str(event), str(kvart.event))
-            kvart.db_event_update(event["host"],event["id"], event["dom"])
+
+        # В конце проверим чтобы все было точно
+        kvart.db_event_update(event["host"],event["id"], event["dom"])
 
     # Функция выполнения
     def send_arendator(self, event, user, dom, kvart):
@@ -133,6 +134,31 @@ send_client_oplata_text ="""
 Если вам больше не нужны наши напоминания вы всегда можете отключить в личном кабинете.
 Ваш Квартирбил.
 """
+send_oplata_keyboard = json.dumps({
+        "one_time": False, "buttons": [
+  [{
+    "action": {
+      "type": "text",
+      "label": smiles.checked + " Подтвердить оплату"
+    },
+    "color": "primary"
+  }],
+  [{
+    "action": {
+      "type": "text",
+      "label": smiles.delete + " Отключить уведомления"
+    },
+    "color": "negative"
+  }],
+
+   [{
+    "action": {
+      "type": "text",
+      "label": smiles.back + " Выйти"
+    },
+    "color": "default"
+  }
+   ]]},ensure_ascii=False)
 # Напоминание клиенту что пора платить
 def send_client_oplata(event, user, kvart):
     host = event["host"]
@@ -145,10 +171,13 @@ def send_client_oplata(event, user, kvart):
     txt = send_client_oplata_text.format(dt=number, summa=kvart.oplata["summa"], payday=payday.date(),
                                          oplata=kvart.oplata["sposob"]).replace("None", "*не указано*")
 
-    # Шлем сообщение
-    api[host].send_message(id, dict(message=txt))
-    #user.menu = ""
-    #TODO Создать меню типа после сообщения
+    # Шлем сообщение (Если включены уведомления!)
+    if user.notifications["client"]:
+        api[host].send_message(id, dict(message=txt, keyboard=send_oplata_keyboard))
+        user.type = "client"
+        user.menu = "event_oplata"
+        user.reload()
+
     # И хачим хранилище
     kvart.db_delete_event(event["N"])
     kvart.event["oplata"] = None
@@ -170,6 +199,31 @@ send_client_end_date_text = """
 Если вам больше не нужны наши напоминания вы всегда можете отключить в личном кабинете.
 Ваш Квартирбил.
 """
+send_end_date_keyboard = json.dumps({
+        "one_time": False, "buttons": [
+  [{
+    "action": {
+      "type": "text",
+      "label": smiles.dogovor + " Продлить договор"
+    },
+    "color": "primary"
+  }],
+  [{
+    "action": {
+      "type": "text",
+      "label": smiles.delete + " Отключить уведомления"
+    },
+    "color": "negative"
+  }],
+
+   [{
+    "action": {
+      "type": "text",
+      "label": smiles.back + " Выйти"
+    },
+    "color": "default"
+  }
+   ]]},ensure_ascii=False)
 # Напоминание клиенту о том что кончается договор
 def send_client_end_date(event, user, kvart):
     host = event["host"]
@@ -179,10 +233,12 @@ def send_client_end_date(event, user, kvart):
     # Сообщение
     txt = send_client_end_date_text.format(dt=number)
 
-    # Шлем сообщение
-    api[host].send_message(id, dict(message=txt))
-    # user.menu = ""
-    # TODO Создать меню типа после сообщения
+    if user.notifications["client"]:
+        api[host].send_message(id, dict(message=txt, keyboard=send_end_date_keyboard))
+        user.type = "client"
+        user.menu = "event_end_date"
+        user.reload()
+
     # И хачим хранилище
     kvart.db_delete_event(event["N"])
     kvart.event["end_date"] = None
@@ -230,9 +286,13 @@ def send_arendator_oplata(event, user, dom, kvart):
                                          oplata_type=kvart.oplata["sposob"], contacts=contacts).replace("None", "*не указано*")
 
     # Шлем сообщение
-    api[host].send_message(id, dict(message=txt))
-    # user.menu = ""
-    # TODO Создать меню типа после сообщения
+    if user.notifications["arendator"]:
+        api[host].send_message(id, dict(message=txt, keyboard=send_oplata_keyboard))
+        user.type = "arendator"
+        user.extra = {"name": dom.name}
+        user.menu = "event_oplata"
+        user.reload()
+
     # И хачим хранилище
     kvart.db_delete_event(event["N"])
     kvart.event["oplata"] = None
@@ -263,9 +323,13 @@ def send_arendator_end_date(event, user, dom, kvart):
     txt = send_arendator_end_date_text.format(kvart_name=dom.name, name=kvart.name)
 
     # Шлем сообщение
-    api[host].send_message(id, dict(message=txt))
-    # user.menu = ""
-    # TODO Создать меню типа после сообщения
+    if user.notifications["arendator"]:
+        api[host].send_message(id, dict(message=txt, keyboard=send_end_date_keyboard))
+        user.type = "arendator"
+        user.extra = {"name":dom.name}
+        user.menu = "event_end_date"
+        user.reload()
+
     # И хачим хранилище
     kvart.db_delete_event(event["N"])
     kvart.event["end_date"] = None

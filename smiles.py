@@ -12,6 +12,7 @@ class Smiles:
         self.notification = "⏰"
         self.money = "💰"
         self.checked = "☑"
+        self.dogovor = "📝"
 
         self.tab = "　"
 
