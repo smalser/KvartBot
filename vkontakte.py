@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-token = open("token.txt", "r", encoding="utf-8").read()
+token = open("token.txt", "r").read().strip()
 
 import threading, datetime, time, json, re
 import vk, requests
@@ -20,8 +20,12 @@ class BotVk:
     # Получаем доступ по токену
     def __init__(self):
         print("Авторизируемся в ВК")
-        self.vk_api = vk.API(vk.Session(token),version="5") # Само апи
-        print("    Успешно")
+        try:
+            self.vk_api = vk.API(vk.Session(token),version="5") # Само апи
+            print("    Успешно")
+        except Exception as exp:
+            print("Ошибка!", exp)
+            print(token)
         self.lasttime = time.time()
 
     # Деструктор
