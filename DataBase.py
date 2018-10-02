@@ -15,9 +15,9 @@ DB_DOMA_SLOTS = ("id", "name", "owner_hostid", "add_time", "adress", "square", "
 #
 DB_EVENTS_SLOTS = ("N", "time", "host", "id", "message", "dom")
 # Создание таблиц
-_db_users_Create = """CREATE TABLE users (hostid varchar(20) not NULL, host varchar(2), id varchar(10), type varchar(10), menu varchar(20), extra text, add_time datetime, doma text, kvartiri text, notifications text, primary key (hostid)); CREATE INDEX hostid ON users(hostid)"""
-_db_doma_Create = """CREATE TABLE doma (id INT UNSIGNED NOT NULL AUTO_INCREMENT, name varchar(30), owner_hostid varchar(20), add_time datetime, adress text, square varchar(10), rooms varchar(10), sanuzel varchar(10), extras text, text text, photos text, kvartirant text, PRIMARY KEY(id)); CREATE INDEX id ON doma(id)"""
-_db_events_Create = """CREATE TABLE events (N INT UNSIGNED NOT NULL AUTO_INCREMENT, time date, host VARCHAR(2), id VARCHAR(10), message varchar(15), dom varchar(10), primary key(N)); CREATE INDEX time ON events(time);"""
+_db_users_Create = """CREATE TABLE users (hostid varchar(20) not NULL, host varchar(2), id varchar(10), type varchar(10), menu varchar(20), extra text, add_time datetime, doma text, kvartiri text, notifications text, primary key (hostid)) character set utf8 collate utf8_unicode_ci; CREATE INDEX hostid ON users(hostid)"""
+_db_doma_Create = """CREATE TABLE doma (id INT UNSIGNED NOT NULL AUTO_INCREMENT, name varchar(30), owner_hostid varchar(20), add_time datetime, adress text, square varchar(10), rooms varchar(10), sanuzel varchar(10), extras text, text text, photos text, kvartirant text, PRIMARY KEY(id)) character set utf8 collate utf8_unicode_ci; CREATE INDEX id ON doma(id)"""
+_db_events_Create = """CREATE TABLE events (N INT UNSIGNED NOT NULL AUTO_INCREMENT, time date, host VARCHAR(2), id VARCHAR(10), message varchar(15), dom varchar(10), primary key(N)) character set utf8 collate utf8_unicode_ci; CREATE INDEX time ON events(time);"""
 
 # Функция для подключения к ДБ
 def connect():

@@ -8,6 +8,7 @@ logging.basicConfig(handlers=[logging.StreamHandler(), logging.FileHandler('test
 import time
 import requests
 
+import vk
 from vkontakte import botvk, users
 
 from EventSender import event_sender
@@ -35,6 +36,12 @@ while True:
     except requests.exceptions.HTTPError:
         print("Ловим разрыв соединения, ждем чуда")
         time.sleep(5)
+
+    # Ошибка вк
+    except vk.exceptions.VkAPIError:
+        print("Ошибочка токена, ждем чуда")
+        time.sleep(10)
+        vk.reload_api()
 
     #except Exception as exp:
      #   vk.send_message("25624369", "Ошибка: %s" % str(exp))

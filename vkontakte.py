@@ -40,6 +40,9 @@ class BotVk:
         self.lasttime = time.time() + timer +0.05
         return self.vk_api
 
+    def reload_api(self):
+        self.vk_api = vk.API(vk.Session(token), version="5")  # Само апи
+
     # Получаем сообщения
     def get_messages(self):
         messages = []
@@ -1817,7 +1820,7 @@ def client_add_kvartira(msg, new=True):
         if new:
             user.add_kvartiri()
         else:
-            kvart.change(user.extra, user.hostid, False)
+            kvart.change(user.extra, user.host, user.id, False)
         return client_menu(msg, "Квартирант успешно добавлен")
 
     else:
