@@ -15,11 +15,11 @@ from EventSender import event_sender
 
 
 
-vk = botvk
+vk_bot = botvk
 while True:
     try:
         # Проверяем сообщения в вк
-        vk.get_messages()
+        vk_bot.get_messages()
         # И в других клиентах ...
 
         # проверяем события
@@ -41,7 +41,7 @@ while True:
     except vk.exceptions.VkAPIError:
         print("Ошибочка токена, ждем чуда")
         time.sleep(10)
-        vk.reload_api()
+        vk_bot.reload_api()
 
     #except Exception as exp:
      #   vk.send_message("25624369", "Ошибка: %s" % str(exp))
