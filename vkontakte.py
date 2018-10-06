@@ -294,7 +294,7 @@ class BotVk:
                 self.send_message(id, client_edit_notifications(msg))
                 return
 
-            # Настрйока оплаты
+            # Настройка оплаты
             elif smiles.money in txt:
                 user.menu = "edit_money"
                 self.send_message(id, client_edit_money(msg))
@@ -410,7 +410,7 @@ choose_message_keyboard = json.dumps(
           [{
             "action": {
               "type": "text",
-              "label": "1. Я съемщик"
+              "label": "1. Я снимаю квартиру"
             },
             "color": "primary"
           }],
@@ -429,7 +429,7 @@ def first_message(message, *args):
     id = str(message["uid"])
 
     # Мы просто отправляем сообщение с приветствием
-    return {"message": "Привет, я бот который блабла, выбери кто ты:"+
+    return {"message": "Привет, я бот управления квартирой, выбери кто ты:"+
                        "\n(Бот использует преподготовленные кнопки, для работы используйте официальные версии ВКонтакте)",
             "keyboard": choose_message_keyboard}
 
@@ -507,7 +507,7 @@ def client_menu(message, addmsg="", *args):
     id = str(message["uid"])
     user = users[id]
 
-    message = "*МЕНЮ СЪЕМЩИКА*\n"
+    message = "*МЕНЮ СНИМАЮ КВАРТИРУ*\n"
     if user.kvartiri:
         message += "Снимаемая вами квартира\n" + str(user.kvartiri)
         keyboard = json.dumps(
