@@ -77,7 +77,7 @@ class BotVk:
         # Если мы меняем свой тип!
         elif smiles.swap in msg["body"]:
             users[id].type = None
-            self.send_message(id, first_message(msg))
+            self.send_message(id, change_message(msg))
 
         # Если он еще не авторизировался
         elif not users[id]:
@@ -433,6 +433,11 @@ def first_message(message, *args):
                        "\n(Бот использует преподготовленные кнопки, для работы используйте официальные версии ВКонтакте)",
             "keyboard": choose_message_keyboard}
 
+def change_message(message, *args):
+    # Мы просто отправляем сообщение с приветствием
+    return {"message": "Выбери меню:",
+            "keyboard": choose_message_keyboard}
+
 # Стандартное меню арендатора
 arendator_menu_keyboard = json.dumps(
     {
@@ -598,7 +603,6 @@ def client_menu(message, addmsg="", *args):
 
 
     return {"message": addmsg + "\n\n" + message, "keyboard": keyboard}
-
 
 # Регистрация после первого захода
 def registry_message(message, *args):
@@ -821,7 +825,7 @@ def arendator_view_flat(msg, add_msg="", *args):
                 }]
             ]}, ensure_ascii=False)}
 
-
+# Редактирование квартиры где выбираем номер
 def arendator_change_flat(msg, *args):
     id = str(msg["uid"])
     user = users[id]
@@ -843,15 +847,19 @@ def arendator_change_flat(msg, *args):
                 },
                 "color": "default"
             }]]}, ensure_ascii=False)}
-    #
-    try:                                    # Пробуем сделать инт
+
+    # Пробуем сделать инт
+    try:
         z = int(msg["body"])
-    except:                                 # Если не выходит пишем ввести квартиру
+    # Если не выходит пишем ввести квартиру
+    except:
         if user.extra:
             ret["message"] = "Ошибка ввода!\n"+ret["message"]
         return ret
 
+    # Если у нас такой есть
     if z <= len(user.doma):
+        # Записываем его и идем в мейн
         user.extra = {"name": tuple(user.doma.keys())[z-1]}
         return arendator_change_flat_main(msg)
     else:
@@ -894,10 +902,12 @@ def arendator_change_flat_main(msg, *args):
         if smiles.next in txt:
             # Оставляем то же самое
             user.extra[zis] = False
+
         # Если это добавление фоток
         elif zis == "photos":
             if "attachments" in msg:
                 user.extra[zis] = BotVk.parse_images(msg)
+            # Для случая когда фотографию надо удалить
             else:
                 user.extra[zis] = "delet"
         # Иначе просто текст
@@ -935,8 +945,6 @@ def arendator_delete_flat(msg, *args):
             # Если согласны на удаление
             if smiles.delete in msg["body"]:
                 user.delete_dom()
-                user.menu = "menu"
-                user.extra = None
                 return arendator_menu(msg,"Квартира удалена!")
             # Если нет то нас выкинет стрелкой
             # Иначе спрашиваем
@@ -1008,18 +1016,14 @@ def arendator_edit_notifications(msg):
     txt = msg["body"]
 
     # Текущее значение
-    nots = user.notifications[user.type]
+    nots = user.notifications["arendator"]
 
     if smiles.done in txt:
-        user.notifications[user.type] = True
-        user.menu = "menu"
-        user.db_update()
+        user.set_notification("arendator", True)
         return arendator_menu(msg, "Уведомления для арендодателя ВКЛЮЧЕНЫ")
 
     elif smiles.delete in txt:
-        user.notifications[user.type] = False
-        user.menu = "menu"
-        user.db_update()
+        user.set_notification("arendator", False)
         return arendator_menu(msg, "Уведомления для арендодателя ВЫКЛЮЧЕНЫ")
 
     # Иначе выводим запрос
@@ -1076,10 +1080,7 @@ def arendator_event_oplata(msg):
         return arendator_menu(msg, "Оплата подтверждена")
     # Отключение уведомлений
     elif smiles.delete in txt:
-        user.notifications["arendator"] = False
-        user.menu = "menu"
-        user.extra = None
-        user.db_update()
+        user.set_notification("arendator", False)
         return arendator_menu(msg, "Уведомления для арендатора ОТКЛЮЧЕНЫ")
 
     # Сделаем простой выход
@@ -1102,10 +1103,7 @@ def arendator_event_end_date(msg):
 
     # Отключение уведомлений
     elif smiles.delete in txt:
-        user.notifications["arendator"] = False
-        user.menu = "menu"
-        user.extra = None
-        user.db_update()
+        user.set_notification("arendator", False)
         return arendator_menu(msg, "Уведомления для арендатора ОТКЛЮЧЕНЫ")
 
     # Сделаем простой выход
@@ -1820,7 +1818,7 @@ def client_add_kvartira(msg, new=True):
         if new:
             user.add_kvartiri()
         else:
-            kvart.change(user.extra, user.host, user.id, False)
+            user.kvart_change()
         return client_menu(msg, "Квартирант успешно добавлен")
 
     else:
@@ -1875,15 +1873,11 @@ def client_edit_notifications(msg):
     nots = user.notifications[user.type]
 
     if smiles.done in txt:
-        user.notifications[user.type] = True
-        user.menu = "menu"
-        user.db_update()
+        user.set_notification(user.type, True)
         return client_menu(msg, "Уведомления для съемщика ВКЛЮЧЕНЫ")
 
     elif smiles.delete in txt:
-        user.notifications[user.type] = False
-        user.menu = "menu"
-        user.db_update()
+        user.set_notification(user.type, False)
         return client_menu(msg, "Уведомления для съемщика ВЫКЛЮЧЕНЫ")
 
     # Иначе выводим запрос
@@ -1950,10 +1944,7 @@ def client_event_oplata(msg):
         return client_menu(msg, "Оплата подтверждена")
     # Отключение уведомлений
     elif smiles.delete in txt:
-        user.notifications["client"] = False
-        user.menu = "menu"
-        user.extra = None
-        user.db_update()
+        user.set_notification("client", False)
         return client_menu(msg, "Уведомления для съемщика ОТКЛЮЧЕНЫ")
 
     # Сделаем простой выход
@@ -1975,10 +1966,7 @@ def client_event_end_date(msg):
 
     # Отключение уведомлений
     elif smiles.delete in txt:
-        user.notifications["client"] = False
-        user.db_update()
-        user.menu = "menu"
-        user.extra = None
+        user.set_notification("client", False)
         return client_menu(msg, "Уведомления для съемщика ОТКЛЮЧЕНЫ")
 
     # Сделаем простой выход

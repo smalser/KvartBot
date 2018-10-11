@@ -198,6 +198,13 @@ class User:
         co.close()
         print("Пользователь %s обновлен!" % self.hostid)
 
+    #
+    def set_notification(self, typ, flag):
+        self.notifications[typ] = flag
+        self.menu = "menu"
+        self.extra = None
+        self.db_update()
+
 
 # Класс клиента(Кто снимает квартиры)
 class Client(User):
@@ -242,7 +249,7 @@ class Client(User):
 
     # Изменение
     def kvart_change(self, *args):
-        self.kvartiri.change(self.extra, self.host, self.id)
+        self.kvartiri.change(self.extra, self.host, self.id,)
         self.menu = "menu"
         self.extra = None
         self.db_update()
@@ -306,12 +313,12 @@ class Arendator(User):
 
     # Удаление дома
     def delete_dom(self, *args):
-        print (self.extra)
-        id = self.doma[self.extra["name"]]
-        DB_doma[self.doma[self.extra["name"]]].delete()
-        DB_doma.delete(id)
-        del self.doma[self.extra["name"]]
+        id = self.doma[self.extra["name"]] # Берем ид
+        DB_doma.delete(id) # Удаляем из пачки домов
+        del id # И насовсем
 
+        self.menu = "menu"
+        self.extra = None
         self.db_update()
 
     # Подтверждение оплаты
@@ -510,7 +517,7 @@ class Dom:
         return self  # Возвращаем
 
     # Удаление из базы
-    def delete(self):
+    def db_delete(self):
         co, cu = connect()
         cu.execute("""DELETE FROM %s WHERE id=%s""" % (DOMA_TABLE, self.id))
         co.commit()
@@ -704,7 +711,8 @@ class DomaDB:
 
     def delete(self, id):
         if id in self.index:
-            self.index.pop(self.index.index(id))
+            d = self.index.pop(self.index.index(id))
+            d.db_delete() # Удаляем полученый дом его функцией
             del self.store[id]
             self.log.pop(self.log.index(id))
 
@@ -988,16 +996,18 @@ class Kvartirant:
 
     # Проверка валидности события
     def isvalid(self, event):
-        if event["message"] == "end_date":
-            end_date = self.event["end_date"]
-            # Если ключ совпадает
-            return (end_date[0] == event["N"])
+        try:
+            if event["message"] == "end_date":
+                end_date = self.event["end_date"]
+                # Если ключ совпадает
+                return (end_date[0] == event["N"])
 
-        elif event["message"] == "oplata":
-            oplata = self.event["oplata"]
-            # Возвращаем валидность
-            return (oplata[0] == event["N"])
-
+            elif event["message"] == "oplata":
+                oplata = self.event["oplata"]
+                # Возвращаем валидность
+                return (oplata[0] == event["N"])
+        except:
+            pass
         # На всякий случай
         return False
 
