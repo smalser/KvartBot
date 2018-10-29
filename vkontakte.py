@@ -65,6 +65,8 @@ class BotVk:
         for i in messages:
             self.choose_message_all(i)
 
+        return bool(len(messages))
+
     # Выбор куда идти на первых шагах
     def choose_message_all(self, msg, *args):
         id = str(msg["uid"])

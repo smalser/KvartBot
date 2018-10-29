@@ -13,17 +13,35 @@ from vkontakte import botvk, users
 
 from EventSender import event_sender
 
+##################################################
+#слежение за верменем
+last = time.time()
+timer = 0
+flag = True
 
 
 vk_bot = botvk
 while True:
     try:
         # Проверяем сообщения в вк
-        vk_bot.get_messages()
+        flag = vk_bot.get_messages()
         # И в других клиентах ...
 
         # проверяем события
         event_sender.check()
+
+        # Если флаг, то записываем когда он появился и обнуляем таймер
+        if flag:
+            last = time.time()
+            timer = 0
+        # И за более 10 секунд отсутствия увеличиваем время
+        if (time.time() - last) > 10:
+            if timer < 10:
+                timer += 0.5
+
+        time.sleep(timer)
+
+
     except KeyboardInterrupt:
         break
     # Ошибка времени(бывает всегда)
